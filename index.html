@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bloc-note AIS — Révision</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<meta name="theme-color" content="#e94560">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+:root {
+  --bg: #0d1117; --bg2: #161b22; --bg3: #21262d; --border: #30363d;
+  --text: #e6edf3; --text2: #8b949e; --accent: #e94560;
+  --blue: #58a6ff; --green: #3fb950; --orange: #d29922; --purple: #bc8cff;
+  --red: #f85149; --teal: #39d353; --yellow: #f0e040;
+  --highlight: #264f78; --note-bg: #1c2a1c; --note-border: #3fb950;
+}
+.light {
+  --bg: #f6f8fa; --bg2: #ffffff; --bg3: #eaeef2; --border: #d0d7de;
+  --text: #1f2328; --text2: #656d76; --accent: #cf222e;
+  --blue: #0969da; --green: #1a7f37; --orange: #9a6700; --purple: #8250df;
+  --red: #d1242f; --teal: #1a7f37; --yellow: #7d4e00;
+  --highlight: #ddf4ff; --note-bg: #dafbe1; --note-border: #1a7f37;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; transition: background 0.2s, color 0.2s; }
+
+/* HEADER */
+.header { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 10px 20px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 100; flex-wrap: wrap; }
+.logo { font-size: 18px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+.search-wrap { flex: 1; min-width: 200px; position: relative; }
+.search-input { width: 100%; padding: 7px 12px 7px 34px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg3); color: var(--text); font-size: 13px; outline: none; }
+.search-input:focus { border-color: var(--blue); }
+.search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text2); font-size: 14px; pointer-events: none; }
+.search-count { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 11px; color: var(--text2); }
+.hdr-btns { display: flex; gap: 6px; }
+.hdr-btn { padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg3); color: var(--text); font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: all 0.15s; }
+.hdr-btn:hover { border-color: var(--blue); color: var(--blue); }
+.hdr-btn.active-quiz { background: var(--accent); color: #fff; border-color: var(--accent); }
+#install-btn { display: none; }
+
+/* TABS */
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 10px 20px; background: var(--bg2); border-bottom: 1px solid var(--border); }
+.tab { padding: 6px 14px; border-radius: 6px; border: 1px solid transparent; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--text2); transition: all 0.15s; }
+.tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.tab:hover:not(.active) { background: var(--bg3); color: var(--text); }
+
+/* CONTENT */
+.content { padding: 20px; max-width: 1100px; }
+.section { display: none; }
+.section.active { display: block; }
+h2 { font-size: 16px; font-weight: 700; color: var(--accent); margin-bottom: 14px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+h3 { font-size: 12px; font-weight: 700; color: var(--blue); margin: 14px 0 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* TABLES */
+table { width: 100%; border-collapse: collapse; margin-bottom: 14px; font-size: 12px; }
+th { background: var(--bg3); color: var(--blue); padding: 7px 10px; text-align: left; font-weight: 700; border: 1px solid var(--border); font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; }
+td { padding: 6px 10px; border: 1px solid var(--border); color: var(--text); }
+tr:nth-child(even) td { background: var(--bg2); }
+tr:hover td { background: var(--bg3); }
+
+/* CODE */
+.cmd-block { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; margin-bottom: 12px; font-family: 'Consolas','Monaco',monospace; font-size: 12px; line-height: 1.9; color: #c9d1d9; overflow-x: auto; white-space: pre; position: relative; }
+.cmd-copy { position: absolute; top: 6px; right: 8px; font-size: 11px; padding: 3px 8px; background: var(--bg3); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; color: var(--text2); }
+.cmd-copy:hover { color: var(--blue); }
+.cmd-label { font-size: 11px; font-weight: 700; color: var(--orange); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+code { font-family: monospace; font-size: 12px; background: var(--bg3); border: 1px solid var(--border); border-radius: 3px; padding: 1px 5px; color: var(--text); }
+
+/* CARDS */
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.card { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+.card-title { font-size: 13px; font-weight: 700; color: var(--blue); margin-bottom: 6px; }
+.card p, .card li { font-size: 12px; color: var(--text2); line-height: 1.6; }
+.card ul { padding-left: 14px; }
+
+/* ALERTS */
+.piege { background: rgba(240,168,0,0.1); border-left: 3px solid var(--orange); border-radius: 4px; padding: 8px 12px; margin-bottom: 8px; font-size: 12px; color: var(--orange); }
+.piege::before { content: "⚠ Piège : "; font-weight: 700; }
+.success { background: rgba(63,185,80,0.1); border-left: 3px solid var(--green); border-radius: 4px; padding: 8px 12px; margin-bottom: 8px; font-size: 12px; color: var(--green); }
+.info { background: rgba(88,166,255,0.1); border-left: 3px solid var(--blue); border-radius: 4px; padding: 8px 12px; margin-bottom: 8px; font-size: 12px; color: var(--blue); }
+
+/* SEARCH HIGHLIGHT */
+.hl { background: var(--yellow); color: #000; border-radius: 2px; padding: 0 1px; }
+
+/* NOTES SYSTEM */
+.note-zone { margin: 8px 0; }
+.note-trigger { font-size: 11px; color: var(--text2); cursor: pointer; padding: 4px 0; display: inline-flex; align-items: center; gap: 4px; }
+.note-trigger:hover { color: var(--green); }
+.note-area { display: none; width: 100%; min-height: 60px; padding: 8px 10px; background: var(--note-bg); border: 1px solid var(--note-border); border-radius: 6px; color: var(--text); font-size: 12px; font-family: inherit; resize: vertical; margin-top: 4px; outline: none; }
+.note-area.open { display: block; }
+.note-saved { font-size: 10px; color: var(--green); margin-left: 8px; display: none; }
+
+/* QUIZ */
+#quiz-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 200; align-items: center; justify-content: center; }
+#quiz-overlay.open { display: flex; }
+.quiz-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 28px; max-width: 600px; width: 90%; }
+.quiz-progress { font-size: 12px; color: var(--text2); margin-bottom: 12px; }
+.quiz-progress-bar { height: 4px; background: var(--bg3); border-radius: 2px; margin-bottom: 16px; }
+.quiz-progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s; }
+.quiz-cat { font-size: 11px; font-weight: 700; color: var(--orange); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+.quiz-q { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 20px; line-height: 1.5; }
+.quiz-opts { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+.quiz-opt { padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-size: 13px; color: var(--text); background: var(--bg3); transition: all 0.15s; text-align: left; }
+.quiz-opt:hover { border-color: var(--blue); color: var(--blue); }
+.quiz-opt.correct { background: rgba(63,185,80,0.15); border-color: var(--green); color: var(--green); }
+.quiz-opt.wrong { background: rgba(248,81,73,0.15); border-color: var(--red); color: var(--red); }
+.quiz-expl { background: var(--bg3); border-radius: 6px; padding: 12px; font-size: 12px; color: var(--text2); margin-bottom: 16px; display: none; line-height: 1.6; }
+.quiz-expl.show { display: block; }
+.quiz-actions { display: flex; gap: 8px; justify-content: space-between; align-items: center; }
+.quiz-score-final { text-align: center; }
+.quiz-score-num { font-size: 48px; font-weight: 700; color: var(--accent); }
+.btn { padding: 8px 18px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg3); color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+.btn:hover { border-color: var(--blue); color: var(--blue); }
+.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-primary:hover { opacity: 0.85; color: #fff; }
+
+/* CIDR calc */
+select { padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg3); color: var(--text); font-size: 13px; cursor: pointer; width: 100%; }
+.calc-result { background: var(--bg3); border-radius: 6px; padding: 12px; font-family: monospace; font-size: 13px; color: var(--blue); margin-top: 8px; line-height: 1.8; }
+
+/* RESPONSIVE */
+@media(max-width:700px) {
+  .grid2, .grid3 { grid-template-columns: 1fr; }
+  .content { padding: 12px; }
+  .header { gap: 8px; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">📓 AIS</div>
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input class="search-input" id="search" placeholder="Rechercher dans tout le bloc-note..." oninput="doSearch(this.value)">
+    <span class="search-count" id="search-count"></span>
+  </div>
+  <div class="hdr-btns">
+    <button class="hdr-btn" id="install-btn" onclick="installApp()">📲 Installer</button>
+    <button class="hdr-btn" id="quiz-btn" onclick="startQuiz()">🎯 Quiz</button>
+    <button class="hdr-btn" id="theme-btn" onclick="toggleTheme()">☀️ Clair</button>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="showTab('reseau',this)">🌐 Réseau</button>
+  <button class="tab" onclick="showTab('cidr',this)">🔢 CIDR</button>
+  <button class="tab" onclick="showTab('cisco',this)">⌨️ Cisco</button>
+  <button class="tab" onclick="showTab('ad',this)">🖥️ AD/DNS/DHCP</button>
+  <button class="tab" onclick="showTab('linux',this)">🐧 Linux</button>
+  <button class="tab" onclick="showTab('gpo',this)">📋 GPO/AGDLP</button>
+  <button class="tab" onclick="showTab('diag',this)">🔍 Diagnostics</button>
+  <button class="tab" onclick="showTab('notes',this)">📝 Mes Notes</button>
+</div>
+
+<div class="content">
+
+<!-- ====== RESEAU ====== -->
+<div id="reseau" class="section active">
+<h2>Modèles OSI & TCP/IP</h2>
+<div class="grid2">
+<div>
+<h3>OSI — 7 couches</h3>
+<table>
+<tr><th>#</th><th>Couche</th><th>PDU</th><th>Exemples</th></tr>
+<tr><td>7</td><td>Application</td><td>Data</td><td>HTTP, DNS, FTP, SMTP, SSH</td></tr>
+<tr><td>6</td><td>Présentation</td><td>Data</td><td>SSL/TLS, JPEG, ASCII</td></tr>
+<tr><td>5</td><td>Session</td><td>Data</td><td>RPC, NetBIOS, SQL</td></tr>
+<tr><td>4</td><td>Transport</td><td>Segment</td><td>TCP (fiable) / UDP (rapide)</td></tr>
+<tr><td>3</td><td>Réseau</td><td>Paquet</td><td>IP, ICMP, OSPF, BGP</td></tr>
+<tr><td>2</td><td>Liaison</td><td>Trame</td><td>Ethernet, 802.1Q, ARP</td></tr>
+<tr><td>1</td><td>Physique</td><td>Bit</td><td>RJ45, fibre, ondes</td></tr>
+</table>
+</div>
+<div>
+<h3>TCP/IP / DOD — 4 couches</h3>
+<table>
+<tr><th>DOD</th><th>≈ OSI</th><th>Protocoles</th></tr>
+<tr><td>Application</td><td>5+6+7</td><td>HTTP, DNS, SMTP, FTP, SSH</td></tr>
+<tr><td>Transport</td><td>4</td><td>TCP / UDP</td></tr>
+<tr><td>Internet</td><td>3</td><td>IP, ICMP, OSPF</td></tr>
+<tr><td>Accès réseau</td><td>1+2</td><td>Ethernet, WiFi, ARP</td></tr>
+</table>
+<h3>Encapsulation PDU</h3>
+<div class="cmd-block">Frame Hdr | Network Hdr | Transport Hdr | DATA | Frame Trailer
+Envoi : App → Transport → Réseau → Liaison → Physique
+Récept: Physique → Liaison → Réseau → Transport → App</div>
+</div>
+</div>
+
+<h3>Ports à connaître par cœur</h3>
+<table>
+<tr><th>Port</th><th>Proto</th><th>Service</th><th>Port</th><th>Proto</th><th>Service</th></tr>
+<tr><td>20/21</td><td>TCP</td><td>FTP (data/ctrl)</td><td>161/162</td><td>UDP</td><td>SNMP</td></tr>
+<tr><td>22</td><td>TCP</td><td>SSH ✅</td><td>389</td><td>TCP/UDP</td><td>LDAP</td></tr>
+<tr><td>23</td><td>TCP</td><td>Telnet ⛔ non chiffré</td><td>443</td><td>TCP</td><td>HTTPS</td></tr>
+<tr><td>25</td><td>TCP</td><td>SMTP</td><td>445</td><td>TCP</td><td>SMB (partage Windows)</td></tr>
+<tr><td>53</td><td>TCP/UDP</td><td>DNS</td><td>636</td><td>TCP</td><td>LDAPS</td></tr>
+<tr><td>67/68</td><td>UDP</td><td>DHCP srv/client</td><td>3389</td><td>TCP</td><td>RDP</td></tr>
+<tr><td>80</td><td>TCP</td><td>HTTP</td><td>5060</td><td>UDP</td><td>SIP (VoIP)</td></tr>
+<tr><td>110</td><td>TCP</td><td>POP3</td><td>69</td><td>UDP</td><td>TFTP</td></tr>
+<tr><td>143</td><td>TCP</td><td>IMAP</td><td>514</td><td>UDP</td><td>Syslog</td></tr>
+</table>
+
+<h3>RFC 1918 — Adresses privées</h3>
+<table>
+<tr><th>Classe</th><th>Plage</th><th>CIDR</th><th>Hôtes max</th></tr>
+<tr><td>A</td><td>10.0.0.0 – 10.255.255.255</td><td>/8</td><td>16 777 214</td></tr>
+<tr><td>B</td><td>172.16.0.0 – 172.31.255.255</td><td>/12</td><td>1 048 574</td></tr>
+<tr><td>C</td><td>192.168.0.0 – 192.168.255.255</td><td>/16</td><td>65 534</td></tr>
+</table>
+
+<div class="piege">172.32.x.x = PUBLIQUE. La plage privée B s'arrête à 172.31.255.255. Piège classique QCM.</div>
+<div class="piege">ping 127.0.0.1 = test pile TCP/IP LOCALE uniquement. Ne teste pas le réseau physique.</div>
+<div class="piege">Switch L2 = travaille avec les MAC (couche 2). Routeur = travaille avec les IP (couche 3).</div>
+<div class="piege">ARP résout IP → MAC sur le réseau LOCAL uniquement.</div>
+<div class="piege">Encapsulation PDU correcte : Frame Hdr | Network Hdr | Transport Hdr | Data | Frame Trailer</div>
+
+<div class="note-zone">
+  <span class="note-trigger" onclick="toggleNote('note-reseau')">✏️ Ajouter une note sur ce chapitre <span class="note-saved" id="saved-note-reseau">✓ Sauvegardé</span></span>
+  <textarea class="note-area" id="note-reseau" placeholder="Tes notes personnelles ici..." oninput="saveNote('note-reseau')"></textarea>
+</div>
+</div>
+
+<!-- ====== CIDR ====== -->
+<div id="cidr" class="section">
+<h2>Table CIDR / VLSM — à connaître par cœur</h2>
+<table>
+<tr><th>Préfixe</th><th>Masque</th><th>Bits hôtes</th><th>Hôtes utilisables</th><th>Block size</th><th>Sous-réseaux /24</th></tr>
+<tr><td>/8</td><td>255.0.0.0</td><td>24</td><td>16 777 214</td><td>—</td><td>—</td></tr>
+<tr><td>/16</td><td>255.255.0.0</td><td>16</td><td>65 534</td><td>—</td><td>—</td></tr>
+<tr><td>/24</td><td>255.255.255.0</td><td>8</td><td>254</td><td>256</td><td>1</td></tr>
+<tr><td>/25</td><td>255.255.255.128</td><td>7</td><td>126</td><td>128</td><td>2</td></tr>
+<tr><td>/26</td><td>255.255.255.192</td><td>6</td><td>62</td><td>64</td><td>4</td></tr>
+<tr><td>/27</td><td>255.255.255.224</td><td>5</td><td>30</td><td>32</td><td>8</td></tr>
+<tr><td>/28</td><td>255.255.255.240</td><td>4</td><td>14</td><td>16</td><td>16</td></tr>
+<tr><td>/29</td><td>255.255.255.248</td><td>3</td><td>6</td><td>8</td><td>32</td></tr>
+<tr><td>/30</td><td>255.255.255.252</td><td>2</td><td>2</td><td>4</td><td>64</td></tr>
+<tr><td>/32</td><td>255.255.255.255</td><td>0</td><td>1 (loopback)</td><td>—</td><td>—</td></tr>
+</table>
+
+<div class="grid2">
+<div>
+<h3>Formules à retenir</h3>
+<div class="card">
+<div class="card-title">Magic Number</div>
+<ul>
+<li>Hôtes = 2^n − 2 &nbsp; (n = bits hôtes)</li>
+<li>Block size = 256 − valeur octet masque</li>
+<li>Ex: /26 → 256 − 192 = <strong>64</strong></li>
+<li>Sous-réseaux = 2^(bits empruntés)</li>
+<li>Réseau suivant = réseau actuel + block size</li>
+</ul>
+</div>
+<div style="margin-top:10px;" class="card">
+<div class="card-title">Binaire — les 8 puissances</div>
+<table><tr><td>128</td><td>64</td><td>32</td><td>16</td><td>8</td><td>4</td><td>2</td><td>1</td></tr></table>
+<p style="margin-top:6px;">192 = 128+64 → 11000000 → /26</p>
+<p>255.255.255.224 → 32ème bit hôte → /27</p>
+</div>
+</div>
+<div>
+<h3>Calculatrice CIDR interactive</h3>
+<label style="font-size:12px;color:var(--text2);">Préfixe CIDR :</label>
+<select id="cidr-sel" onchange="calcCIDR()" style="margin-top:4px;">
+<option value="24">/24</option><option value="25">/25</option>
+<option value="26">/26</option><option value="27">/27</option>
+<option value="28">/28</option><option value="29">/29</option>
+<option value="30">/30</option>
+</select>
+<div class="calc-result" id="cidr-result">Sélectionnez un préfixe</div>
+</div>
+</div>
+
+<h3>Exemple VLSM — 192.168.1.0/24</h3>
+<table>
+<tr><th>Réseau</th><th>CIDR</th><th>Premier hôte</th><th>Dernier hôte</th><th>Broadcast</th><th>Hôtes</th></tr>
+<tr><td>192.168.1.0</td><td>/25</td><td>.1</td><td>.126</td><td>.127</td><td>126</td></tr>
+<tr><td>192.168.1.128</td><td>/26</td><td>.129</td><td>.190</td><td>.191</td><td>62</td></tr>
+<tr><td>192.168.1.192</td><td>/27</td><td>.193</td><td>.222</td><td>.223</td><td>30</td></tr>
+<tr><td>192.168.1.224</td><td>/28</td><td>.225</td><td>.238</td><td>.239</td><td>14</td></tr>
+<tr><td>192.168.1.240</td><td>/30</td><td>.241</td><td>.242</td><td>.243</td><td>2</td></tr>
+</table>
+<div class="piege">Pour VLSM : toujours allouer du plus grand besoin au plus petit. Évite le gaspillage d'adresses.</div>
+<div class="note-zone">
+  <span class="note-trigger" onclick="toggleNote('note-cidr')">✏️ Ajouter une note <span class="note-saved" id="saved-note-cidr">✓ Sauvegardé</span></span>
+  <textarea class="note-area" id="note-cidr" placeholder="Ex: rappel calcul /26 pour l'exam..." oninput="saveNote('note-cidr')"></textarea>
+</div>
+</div>
+
+<!-- ====== CISCO ====== -->
+<div id="cisco" class="section">
+<h2>Commandes Cisco IOS</h2>
+
+<h3>Modes IOS</h3>
+<table>
+<tr><th>Mode</th><th>Invite</th><th>Accès</th></tr>
+<tr><td>User EXEC</td><td>Router&gt;</td><td>Connexion initiale</td></tr>
+<tr><td>Privileged EXEC</td><td>Router#</td><td><code>enable</code></td></tr>
+<tr><td>Global Config</td><td>Router(config)#</td><td><code>configure terminal</code></td></tr>
+<tr><td>Interface Config</td><td>Router(config-if)#</td><td><code>interface Gi0/0</code></td></tr>
+<tr><td>Line Config</td><td>Router(config-line)#</td><td><code>line vty 0 15</code></td></tr>
+<tr><td>OSPF Config</td><td>Router(config-router)#</td><td><code>router ospf 1</code></td></tr>
+</table>
+
+<div class="grid2">
+<div>
+<div class="cmd-label">Config de base</div>
+<div class="cmd-block"><button class="cmd-copy" onclick="copyCmd(this)">Copier</button>Router(config)# hostname R1
+R1(config)# enable secret Cisco123
+R1(config)# service password-encryption
+R1(config)# no ip domain-lookup
+R1(config)# banner motd # Acces autorise uniquement #
+R1(config)# login block-for 60 attempts 5 within 60</div>
+
+<div class="cmd-label">Interface</div>
+<div class="cmd-block"><button class="cmd-copy" onclick="copyCmd(this)">Copier</button>R1(config)# interface GigabitEthernet0/0
+R1(config-if)# ip address 192.168.1.1 255.255.255.0
+R1(config-if)# no shutdown
+R1(config-if)# description LAN-Compta</div>
+
+<div class="cmd-label">SSH sécurisé</div>
+<div class="cmd-block"><button class="cmd-copy" onclick="copyCmd(this)">Copier</button>R1(config)# ip domain-name mondomaine.local
+R1(config)# crypto key generate rsa modulus 2048
+R1(config)# username admin privilege 15 secret Cisco123
+R1(config)# line vty 0 15
+R1(config-line)# transport input ssh
+R1(config-line)# login local</div>
+</div>
+<div>
+<div class="cmd-label">Routage statique</div>
+<div class="cmd-block"><button class="cmd-copy" onclick="copyCmd(this)">Copier</button>ip route 10.0.2.0 255.255.255.0 10.0.0.2  [récursif]
+ip route 10.0.2.0 255.255.255.0 Gi0/1     [direct]
+ip route 0.0.0.0 0.0.0.0 10.0.0.1         [défaut]</div>
+
+<div class="cmd-label">OSPF</div>
+<div class="cmd-block"><button class="cmd-copy" onclick="copyCmd(this)">Copier</button>R1(config)# router ospf 1
+R1(config-router)# router-id 1.1.1.1
+R1(config-router)# network 192.168.1.0 0.0.0.255 area 0
+R1(config-router)# passive-interface Gi0/0</div>
+
+<div class="cmd-label">NAT/PAT</div>
+<div class="cmd-block"><button class="cmd-copy" onclick="copyCmd(this)">Copier</button>ip nat inside source list 1 interface Gi0/1 overload
+access-list 1 permit 192.168.1.0 0.0.0.255
+interface Gi0/0
+  ip nat inside
+interface Gi0/1
+  ip nat outside</div>
+</div>
+</div>
+
+<h3>VLANs & Trunking</h3>
+<div class="grid2">
+<div>
+<div class="cmd-label">VLAN + access + trunk (switch)</div>
+<div class="cmd-block"><button class="cmd-copy" onclick="copyCmd(this)">Copier</button>SW1(config)# vlan 10
+SW1(config-vlan)# name COMPTA
+SW1(config)# interface fa0/1
+SW1(config-if)# switchport mode access
+SW1(config-if)# switchport access vlan 10
+SW1(config)# interface GigabitEthernet0/1
+SW1(config-if)# switchport mode trunk
+SW1(config-if)# switchport trunk allowed vlan 10,20,30</div>
+</div>
+<div>
+<div class="cmd-label">Inter-VLAN — Router-on-a-Stick</div>
+<div class="cmd-block"><button class="cmd-copy" onclick="copyCmd(this)">Copier</button>R1(config)# interface GigabitEthernet0/0.10
+R1(config-subif)# encapsulation dot1Q 10
+R1(config-subif)# ip address 192.168.10.1 255.255.255.0
+R1(config)# interface GigabitEthernet0/0.20
+R1(config-subif)# encapsulation dot1Q 20
+R1(config-subif)# ip address 192.168.20.1 255.255.255.0</div>
+</div>
+</div>
+
+<h3>Commandes show — vérification</h3>
+<div class="cmd-block"><button class="cmd-copy" onclick="copyCmd(this)">Copier</button>show running-config              [config active RAM]
+show startup-config             [config NVRAM — survit au reboot]
+copy running-config startup-config   [SAUVEGARDER !!]
+show ip route                   [table de routage]
+show ip interface brief         [état UP/DOWN toutes interfaces]
+show interfaces GigabitEthernet0/0  [détail + erreurs CRC]
+show vlan brief                 [VLANs et ports associés]
+show interfaces trunk           [ports trunk actifs]
+show mac address-table          [table MAC switch]
+show ip ospf neighbor           [voisins OSPF]
+show arp                        [table ARP routeur]
+show version                    [version IOS, modèle, mémoire]</div>
+
+<div class="piege">"administratively down" = port désactivé. Fix: no shutdown</div>
+<div class="piege">Ne jamais oublier "copy running-config startup-config" après toute modification !</div>
+<div class="note-zone">
+  <span class="note-trigger" onclick="toggleNote('note-cisco')">✏️ Ajouter une note <span class="note-saved" id="saved-note-cisco">✓ Sauvegardé</span></span>
+  <textarea class="note-area" id="note-cisco" placeholder="Ex: commandes VoIP CME, ephone-dn..." oninput="saveNote('note-cisco')"></textarea>
+</div>
+</div>
+
+<!-- ====== AD ====== -->
+<div id="ad" class="section">
+<h2>Active Directory — Windows Server</h2>
+
+<div class="grid3">
+<div class="card"><div class="card-title">Domaine</div><p>Unité admin AD. Ex: hydrogel.local. Contient users, groupes, OUs, GPOs, ordinateurs.</p></div>
+<div class="card"><div class="card-title">OU</div><p>Conteneur logique pour GPO ciblées. Peut être imbriquée. Ex: OU=Compta,DC=hydrogel,DC=local</p></div>
+<div class="card"><div class="card-title">DC</div><p>Serveur AD DS. Auth Kerberos. Min. 2 DC recommandés pour redondance.</p></div>
+<div class="card"><div class="card-title">Catalogue Global</div><p>Copie partielle de tous les objets de la forêt. Nécessaire pour auth inter-domaines.</p></div>
+<div class="card"><div class="card-title">Forêt</div><p>Ensemble de domaines liés. Frontière de sécurité ultime en AD.</p></div>
+<div class="card"><div class="card-title">FSMO (5 rôles)</div><p>PDC Emulator, RID Master, Infrastructure Master, Schema Master, Domain Naming Master.</p></div>
+</div>
+
+<h3>PowerShell AD</h3>
+<div class="cmd-block"><button class="cmd-copy" onclick="copyCmd(this)">Copier</button># Utilisateurs
+New-ADUser -Name "Jean Dupont" -SamAccountName jdupont `
+  -AccountPassword (ConvertTo-SecureString "P@ss1234" -AsPlainText -Force) `
+  -Enabled $true -Path "OU=Compta,DC=hydrogel,DC=local"
+Get-ADUser -Filter * -SearchBase "OU=Compta,DC=hydrogel,DC=local"
+Set-ADUser jdupont -Title "Comptable" -Department "Finance"
+Remove-ADUser jdupont -Confirm:$false
+Unlock-ADAccount jdupont
+
+# Groupes
+New-ADGroup -Name "GG_Compta" -GroupScope Global -GroupCategory Security
+Add-ADGroupMember -Identity "GG_Compta" -Members jdupont
+Get-ADGroupMember "GG_Compta"
+
+# OUs
+New-ADOrganizationalUnit -Name "Comptabilite" -Path "DC=hydrogel,DC=local"</div>
+
+<h3>DNS Windows Server</h3>
+<div class="cmd-block"><button class="cmd-copy" onclick="copyCmd(this)">Copier</button>Add-DnsServerPrimaryZone -Name "hydrogel.local" -ReplicationScope "Domain"
+Add-DnsServerPrimaryZone -Name "1.168.192.in-addr.arpa" -ReplicationScope "Domain"
+Add-DnsServerResourceRecordA -ZoneName "hydrogel.local" -Name "srv01" -IPv4Address "192.168.1.10"
+Add-DnsServerResourceRecordPtr -ZoneName "1.168.192.in-addr.arpa" -Name "10" -PtrDomainName "srv01.hydrogel.local"
+nslookup srv01.hydrogel.local          [vérification résolution directe]
+Resolve-DnsName srv01.hydrogel.local   [PowerShell]</div>
+
+<h3>DHCP Windows Server</h3>
+<div class="cmd-block"><button class="cmd-copy" onclick="copyCmd(this)">Copier</button>Add-DhcpServerv4Scope -Name "LAN-Siege" -StartRange 192.168.1.10 `
+  -EndRange 192.168.1.200 -SubnetMask 255.255.255.0
+Set-DhcpServerv4OptionValue -ScopeId 192.168.1.0 -Router 192.168.1.1 `
+  -DnsServer 192.168.1.10 -DomainName "hydrogel.local"
+Add-DhcpServerv4ExclusionRange -ScopeId 192.168.1.0 `
+  -StartRange 192.168.1.1 -EndRange 192.168.1.9
+Add-DhcpServerv4Reservation -ScopeId 192.168.1.0 `
+  -IPAddress 192.168.1.50 -ClientId "AA-BB-CC-DD-EE-FF" -Description "Imprimante"</div>
+
+<div class="piege">DNS doit avoir une zone de recherche INVERSÉE (PTR) pour les résolutions inverses.</div>
+<div class="piege">DHCP Failover = 2 serveurs DHCP partageant la même plage. Mode Hot Standby ou Load Balance.</div>
+<div class="note-zone">
+  <span class="note-trigger" onclick="toggleNote('note-ad')">✏️ Ajouter une note <span class="note-saved" id="saved-note-ad">✓ Sauvegardé</span></span>
+  <textarea class="note-area" id="note-ad" placeholder="Ex: FSMO roles, forêt multi-domaines..." oninput="saveNote('note-ad')"></textarea>
+</div>
+</div>
+
+<!-- ====== LINUX ====== -->
+<div id="linux" class="section">
+<h2>Administration Linux</h2>
+
+<div class="grid2">
+<div>
+<h3>Permissions — tableau octal</h3>
+<table>
+<tr><th>Octal</th><th>Symbole</th><th>Signification</th></tr>
+<tr><td>7</td><td>rwx</td><td>Lecture + Écriture + Exécution</td></tr>
+<tr><td>6</td><td>rw-</td><td>Lecture + Écriture</td></tr>
+<tr><td>5</td><td>r-x</td><td>Lecture + Exécution</td></tr>
+<tr><td>4</td><td>r--</td><td>Lecture seule</td></tr>
+<tr><td>0</td><td>---</td><td>Aucun droit</td></tr>
+</table>
+<div class="cmd-block"><button class="cmd-copy" onclick="copyCmd(this)">Copier</button>chmod 755 /dossier     [rwxr-xr-x]
+chmod 640 fichier.conf [rw-r-----]
+chown user:groupe fich
+chmod g+s /dossier     [SGID — héritage groupe]
+chmod +t /dossier      [Sticky Bit — seul proprio peut suppr]
+umask 022              [résultat: 755 dossiers / 644 fichiers]</div>
+</div>
+<div>
+<h3>Gestion utilisateurs</h3>
+<div class="cmd-block"><button class="cmd-copy" onclick="copyCmd(this)">Copier</button>useradd -m -s /bin/bash -G sudo jdupont
+passwd jdupont
+usermod -aG groupe jdupont   [ajouter à groupe]
+usermod -L jdupont           [verrouiller compte]
+userdel -r jdupont           [suppr + home]
+groupadd comptabilite
+id jdupont
+cat /etc/passwd   [liste users]
+cat /etc/group    [liste groupes]
+cat /etc/shadow   [hashes mdp]</div>
+</div>
+</div>
+
+<div class="grid2">
+<div>
+<h3>Services systemd</h3>
+<div class="cmd-block"><button class="cmd-copy" onclick="copyCmd(this)">Copier</button>systemctl start|stop|restart|status nginx
+systemctl enable nginx    [démarrage auto boot]
+systemctl disable nginx
+journalctl -u nginx -f    [logs en temps réel]
+journalctl -xe            [logs système erreurs]</div>
+
+<h3>UFW — Pare-feu</h3>
+<div class="cmd-block"><button class="cmd-copy" onclick="copyCmd(this)">Copier</button>ufw enable
+ufw status verbose
+ufw allow ssh
+ufw allow 80/tcp
+ufw allow 443/tcp
+ufw deny 23/tcp
+ufw allow from 192.168.1.0/24 to any port 3306
+ufw delete allow 80/tcp</div>
+</div>
+<div>
+<h3>Réseau Linux</h3>
+<div class="cmd-block"><button class="cmd-copy" onclick="copyCmd(this)">Copier</button>ip a                          [adresses IP]
+ip r                          [table de routage]
+ip link set eth0 up/down
+ss -tuln                      [ports en écoute]
+nmcli connection show
+nmcli con mod "eth0" ipv4.addresses 192.168.1.10/24
+nmcli con mod "eth0" ipv4.gateway 192.168.1.1
+nmcli con mod "eth0" ipv4.dns "8.8.8.8"
+nmcli con mod "eth0" ipv4.method manual
+nmcli con up "eth0"</div>
+
+<h3>SSH</h3>
+<div class="cmd-block"><button class="cmd-copy" onclick="copyCmd(this)">Copier</button>ssh user@192.168.1.10
+ssh-keygen -t rsa -b 4096
+ssh-copy-id user@192.168.1.10
+
+# /etc/ssh/sshd_config :
+PermitRootLogin no
+PasswordAuthentication no
+Port 2222
+AllowUsers admin jdupont
+systemctl restart sshd</div>
+</div>
+</div>
+<div class="note-zone">
+  <span class="note-trigger" onclick="toggleNote('note-linux')">✏️ Ajouter une note <span class="note-saved" id="saved-note-linux">✓ Sauvegardé</span></span>
+  <textarea class="note-area" id="note-linux" placeholder="Ex: commandes Samba, Apache2, BIND9..." oninput="saveNote('note-linux')"></textarea>
+</div>
+</div>
+
+<!-- ====== GPO ====== -->
+<div id="gpo" class="section">
+<h2>GPO & modèle AGDLP</h2>
+
+<h3>Ordre d'application LSDOU — LE plus important</h3>
+<table>
+<tr><th>#</th><th>Niveau</th><th>Description</th><th>Priorité</th></tr>
+<tr><td>1</td><td>L — Local</td><td>Politique locale de la machine Windows</td><td>⬇ La plus faible — écrasée par tout</td></tr>
+<tr><td>2</td><td>S — Site</td><td>GPO liée au site Active Directory</td><td>Appliquée en 2ème</td></tr>
+<tr><td>3</td><td>D — Domaine</td><td>GPO liée au domaine entier</td><td>Appliquée en 3ème</td></tr>
+<tr><td>4</td><td>OU</td><td>GPO liée à l'OU (+ précise = OU enfant gagne)</td><td>⬆ La plus forte — dernière = gagne</td></tr>
+</table>
+
+<div class="piege">La DERNIÈRE GPO appliquée l'emporte. Sauf si GPO parente marquée "Enforced" (No Override).</div>
+<div class="piege">"Block Inheritance" sur une OU = ignore GPO parentes (sauf Enforced).</div>
+<div class="success">Debug : gpresult /R (console) | gpresult /H rapport.html | gpupdate /force</div>
+
+<h3>GPO courantes — emplacements exacts</h3>
+<table>
+<tr><th>Paramètre</th><th>Emplacement dans GPME</th></tr>
+<tr><td>Politique de mot de passe</td><td>Config ordi &gt; Param. Windows &gt; Param. sécu &gt; Stratégies de compte &gt; Stratégie de mdp</td></tr>
+<tr><td>Verrouillage de compte</td><td>...&gt; Stratégie de verrouillage de compte</td></tr>
+<tr><td>Mappage lecteur réseau</td><td>Config util &gt; Préférences &gt; Param. Windows &gt; Mappages de lecteurs</td></tr>
+<tr><td>Fond d'écran</td><td>Config util &gt; Modèles d'admin &gt; Bureau &gt; Papier peint</td></tr>
+<tr><td>Désactiver Panneau de config</td><td>Config util &gt; Modèles d'admin &gt; Panneau de config</td></tr>
+<tr><td>Script démarrage</td><td>Config ordi &gt; Param. Windows &gt; Scripts &gt; Démarrage</td></tr>
+<tr><td>Profils itinérants</td><td>Config util &gt; Modèles d'admin &gt; Système &gt; Profils utilisateur</td></tr>
+</table>
+
+<h3>Modèle AGDLP</h3>
+<div class="card" style="margin-bottom:12px;">
+<div class="card-title">Account → Global Group → Domain Local Group → Permission</div>
+<ul style="margin-top:8px;">
+<li><strong>A</strong> = Account (utilisateur ou ordinateur)</li>
+<li><strong>G</strong> = Global Group — regroupe par fonction (ex: GG_Compta)</li>
+<li><strong>DL</strong> = Domain Local Group — définit l'accès à une ressource (ex: DL_Lecture_Partage_Compta)</li>
+<li><strong>P</strong> = Permission NTFS appliquée au groupe DL sur la ressource</li>
+</ul>
+</div>
+<div class="cmd-block">jdupont ──→ GG_Comptabilite ──→ DL_Acces_Partage_Compta ──→ Lecture sur \\SRV01\Compta
+
+Avantage : pour donner accès à un user, on l'ajoute au Global Group.
+Pas besoin de toucher aux permissions NTFS à chaque fois.</div>
+
+<h3>DFS — Namespace + Réplication</h3>
+<div class="grid2">
+<div class="card"><div class="card-title">DFS Namespace (DFS-N)</div><p>Espace de noms unifié : \\domaine\partages. Masque l'emplacement physique. Facilite les migrations.</p></div>
+<div class="card"><div class="card-title">DFS Replication (DFS-R)</div><p>Réplique les dossiers entre serveurs. Algorithme RDC (delta). Remplace FRS. Topologie Hub-Spoke ou Mesh.</p></div>
+</div>
+<div class="note-zone">
+  <span class="note-trigger" onclick="toggleNote('note-gpo')">✏️ Ajouter une note <span class="note-saved" id="saved-note-gpo">✓ Sauvegardé</span></span>
+  <textarea class="note-area" id="note-gpo" placeholder="Ex: GPO fine-grained password, PSO..." oninput="saveNote('note-gpo')"></textarea>
+</div>
+</div>
+
+<!-- ====== DIAG ====== -->
+<div id="diag" class="section">
+<h2>Diagnostics réseau — méthode & outils</h2>
+
+<h3>Méthodologie bottom-up</h3>
+<div class="grid3">
+<div class="card"><div class="card-title">1 — Physique</div><p>Câble branché ? LED switch allumée ? ping 127.0.0.1 répond ?</p></div>
+<div class="card"><div class="card-title">2 — Liaison</div><p>MAC visible ? Port switch UP ? ARP montre la passerelle ?</p></div>
+<div class="card"><div class="card-title">3 — Réseau</div><p>IP configurée ? Bon masque ? ping passerelle répond ?</p></div>
+<div class="card"><div class="card-title">4 — Transport</div><p>Port ouvert ? Firewall bloquant ? telnet IP port</p></div>
+<div class="card"><div class="card-title">5 — Application</div><p>Service démarré ? DNS résout ? Logs = erreurs ?</p></div>
+<div class="card"><div class="card-title">Ishikawa (5M)</div><p>Matériel, Méthode, Milieu, Main d'œuvre, Matière — identifier la cause racine.</p></div>
+</div>
+
+<h3>Commandes Windows</h3>
+<div class="cmd-block"><button class="cmd-copy" onclick="copyCmd(this)">Copier</button>ipconfig /all             [IP, masque, passerelle, DNS, MAC, bail DHCP]
+ipconfig /release         [libérer bail DHCP]
+ipconfig /renew           [renouveler bail DHCP]
+ipconfig /flushdns        [vider cache DNS]
+ipconfig /displaydns      [afficher cache DNS]
+ping 127.0.0.1            [test pile TCP/IP locale]
+ping 192.168.1.1 -t       [ping passerelle continu]
+ping 8.8.8.8              [test Internet sans DNS]
+ping google.fr            [test DNS + Internet]
+tracert 8.8.8.8           [tracer le chemin]
+pathping 8.8.8.8          [tracert + stats de perte]
+nslookup google.fr        [résolution DNS]
+nslookup google.fr 8.8.8.8  [DNS spécifique]
+arp -a                    [table ARP (IP → MAC)]
+route print               [table de routage]
+netstat -ano              [connexions + PID]
+telnet 192.168.1.10 80    [tester port ouvert]
+gpresult /R               [GPO appliquées]
+gpresult /H C:\gpo.html   [rapport HTML GPO]
+gpupdate /force           [forcer mise à jour GPO]</div>
+
+<h3>Commandes Linux</h3>
+<div class="cmd-block"><button class="cmd-copy" onclick="copyCmd(this)">Copier</button>ping -c 4 8.8.8.8
+traceroute 8.8.8.8
+mtr 8.8.8.8                  [ping + traceroute live]
+dig google.fr
+dig google.fr @8.8.8.8       [via DNS spécifique]
+nslookup google.fr
+arp -n                        [table ARP]
+ip neigh                      [idem, plus moderne]
+ss -tuln                      [ports en écoute]
+ss -tulnp                     [ports + processus]
+tcpdump -i eth0               [capturer trafic]
+tcpdump -i eth0 port 80       [filtre HTTP]
+tcpdump -i eth0 host 192.168.1.10 -w /tmp/cap.pcap
+curl -I https://192.168.1.10  [test HTTP headers]
+nc -zv 192.168.1.10 22        [tester si port ouvert]</div>
+
+<h3>Process DHCP — DORA</h3>
+<table>
+<tr><th>Étape</th><th>Message</th><th>Sens</th><th>Description</th></tr>
+<tr><td>D</td><td>DHCPDISCOVER</td><td>Client → broadcast</td><td>Cherche un serveur DHCP</td></tr>
+<tr><td>O</td><td>DHCPOFFER</td><td>Serveur → client</td><td>Propose une IP</td></tr>
+<tr><td>R</td><td>DHCPREQUEST</td><td>Client → broadcast</td><td>Accepte l'offre</td></tr>
+<tr><td>A</td><td>DHCPACK</td><td>Serveur → client</td><td>Confirme le bail</td></tr>
+</table>
+<div class="piege">DHCPDISCOVER et DHCPREQUEST sont les 2 messages diffusés par le CLIENT. Piège classique CCNA.</div>
+
+<div class="note-zone">
+  <span class="note-trigger" onclick="toggleNote('note-diag')">✏️ Ajouter une note <span class="note-saved" id="saved-note-diag">✓ Sauvegardé</span></span>
+  <textarea class="note-area" id="note-diag" placeholder="Ex: scénarios de pannes à l'exam..." oninput="saveNote('note-diag')"></textarea>
+</div>
+</div>
+
+<!-- ====== MES NOTES ====== -->
+<div id="notes" class="section">
+<h2>📝 Toutes mes notes</h2>
+<div class="info">✏️ Écris tes notes dans chaque onglet, puis clique <strong>💾 Exporter</strong> pour télécharger un nouveau fichier HTML avec toutes tes notes intégrées dedans. Ce fichier fonctionne partout, sans internet, sans installation.</div>
+<div style="margin-bottom:14px;">
+  <button class="btn btn-primary" onclick="exportWithNotes()" style="font-size:14px;padding:10px 22px;">💾 Exporter mon bloc-note avec mes notes</button>
+  <span id="export-ok" style="margin-left:12px;color:var(--green);font-size:13px;display:none;">✓ Fichier téléchargé !</span>
+</div>
+<div id="all-notes-display" style="margin-top:14px;"></div>
+<div style="margin-top:16px;">
+<h3>Note libre</h3>
+<textarea class="note-area open" id="note-libre" placeholder="Zone de brouillon libre — mémos, rappels, formules..." style="min-height:200px;" oninput="saveNote('note-libre')"></textarea>
+</div>
+</div>
+
+</div><!-- /content -->
+
+<!-- ====== QUIZ OVERLAY ====== -->
+<div id="quiz-overlay">
+<div class="quiz-box">
+  <div id="quiz-inner"></div>
+</div>
+</div>
+
+<script>
+// ===== THEME =====
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light');
+  document.getElementById('theme-btn').textContent = isLight ? '🌙 Sombre' : '☀️ Clair';
+  localStorage.setItem('ais-theme', isLight ? 'light' : 'dark');
+}
+if (localStorage.getItem('ais-theme') === 'light') {
+  document.body.classList.add('light');
+  document.getElementById('theme-btn').textContent = '🌙 Sombre';
+}
+
+// ===== TABS =====
+function showTab(id, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+  document.getElementById('search').value = '';
+  clearHighlights();
+  document.getElementById('search-count').textContent = '';
+  if (id === 'notes') refreshNotesPage();
+}
+
+// ===== SEARCH =====
+let searchTimeout;
+function doSearch(val) {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    clearHighlights();
+    if (!val.trim() || val.length < 2) { document.getElementById('search-count').textContent = ''; return; }
+    const re = new RegExp('(' + val.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + ')', 'gi');
+    let count = 0;
+    const content = document.querySelector('.content');
+    walkText(content, re, () => count++);
+    document.getElementById('search-count').textContent = count ? count + ' résultat' + (count>1?'s':'') : 'Aucun résultat';
+    if (count) {
+      const first = content.querySelector('.hl');
+      if (first) first.scrollIntoView({ behavior:'smooth', block:'center' });
+    }
+    // auto-switch to section with results
+    document.querySelectorAll('.section').forEach(sec => {
+      if (sec.querySelector('.hl')) {
+        sec.classList.add('active');
+        const tabId = sec.id;
+        document.querySelectorAll('.tab').forEach(t => {
+          if (t.getAttribute('onclick') && t.getAttribute('onclick').includes("'" + tabId + "'")) t.classList.add('active');
+          else t.classList.remove('active');
+        });
+      }
+    });
+  }, 250);
+}
+
+function walkText(node, re, cb) {
+  if (node.nodeType === 3) {
+    const txt = node.textContent;
+    if (re.test(txt)) {
+      re.lastIndex = 0;
+      const span = document.createElement('span');
+      span.innerHTML = txt.replace(re, m => { cb(); return '<mark class="hl">' + m + '</mark>'; });
+      node.parentNode.replaceChild(span, node);
+    }
+  } else if (node.nodeType === 1 && !['SCRIPT','STYLE','TEXTAREA','BUTTON','SELECT'].includes(node.tagName)) {
+    [...node.childNodes].forEach(c => walkText(c, re, cb));
+  }
+}
+
+function clearHighlights() {
+  document.querySelectorAll('.hl').forEach(el => {
+    const parent = el.parentNode;
+    parent.replaceChild(document.createTextNode(el.textContent), el);
+    parent.normalize();
+  });
+}
+
+// ===== NOTES =====
+function toggleNote(id) {
+  const ta = document.getElementById(id);
+  ta.classList.toggle('open');
+  if (ta.classList.contains('open')) ta.focus();
+}
+function saveNote(id) {
+  const s = document.getElementById('saved-' + id);
+  if (s) { s.style.display = 'inline'; setTimeout(() => s.style.display='none', 1200); }
+  refreshNotesPage();
+}
+function loadAllNotes() { /* notes already in HTML values */ }
+function refreshNotesPage() {
+  const ids = ['note-reseau','note-cidr','note-cisco','note-ad','note-linux','note-gpo','note-diag','note-libre'];
+  const labels = { 'note-reseau':'Réseau/OSI','note-cidr':'CIDR/VLSM','note-cisco':'Cisco CLI','note-ad':'AD/DNS/DHCP','note-linux':'Linux','note-gpo':'GPO/AGDLP','note-diag':'Diagnostics','note-libre':'Note libre' };
+  let html = '';
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    const val = el ? el.value.trim() : '';
+    if (val) html += `<div class="card" style="margin-bottom:10px;"><div class="card-title">${labels[id]}</div><p style="white-space:pre-wrap;color:var(--text);font-size:12px;">${val.replace(/</g,'&lt;')}</p></div>`;
+  });
+  const disp = document.getElementById('all-notes-display');
+  if (disp) disp.innerHTML = html || '<p style="color:var(--text2);font-size:13px;">Aucune note pour l\'instant. Utilise les zones ✏️ dans chaque onglet.</p>';
+}
+function exportWithNotes() {
+  const ids = ['note-reseau','note-cidr','note-cisco','note-ad','note-linux','note-gpo','note-diag','note-libre'];
+  let html = document.documentElement.outerHTML;
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const val = el.value.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    // Replace the textarea tag to inject the value as content between tags
+    const re = new RegExp('(<textarea[^>]+id="' + id + '"[^>]*>)[\\s\\S]*?(<\\/textarea>)');
+    html = html.replace(re, '$1' + val + '$2');
+  });
+  const blob = new Blob([html], {type:'text/html;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const d = new Date();
+  const dateStr = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  a.download = 'bloc_note_AIS_' + dateStr + '.html';
+  a.click();
+  URL.revokeObjectURL(url);
+  const ok = document.getElementById('export-ok');
+  if (ok) { ok.style.display='inline'; setTimeout(()=>ok.style.display='none', 3000); }
+}
+
+// ===== COPY CMD =====
+function copyCmd(btn) {
+  const block = btn.parentElement;
+  const text = block.textContent.replace('Copier','').trim();
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✓ Copié !';
+    setTimeout(() => btn.textContent = 'Copier', 1500);
+  }).catch(() => {
+    btn.textContent = '✗ Erreur';
+    setTimeout(() => btn.textContent = 'Copier', 1500);
+  });
+}
+
+// ===== CIDR =====
+const cidrData = {
+  24:{mask:'255.255.255.0',hosts:254,block:256,subnets:1},
+  25:{mask:'255.255.255.128',hosts:126,block:128,subnets:2},
+  26:{mask:'255.255.255.192',hosts:62,block:64,subnets:4},
+  27:{mask:'255.255.255.224',hosts:30,block:32,subnets:8},
+  28:{mask:'255.255.255.240',hosts:14,block:16,subnets:16},
+  29:{mask:'255.255.255.248',hosts:6,block:8,subnets:32},
+  30:{mask:'255.255.255.252',hosts:2,block:4,subnets:64}
+};
+function calcCIDR() {
+  const p = document.getElementById('cidr-sel').value;
+  const d = cidrData[p];
+  document.getElementById('cidr-result').innerHTML =
+    `Préfixe   : /${p}\nMasque    : ${d.mask}\nHôtes     : ${d.hosts}\nBlock size: ${d.block}\nSous-rés. : ${d.subnets} (dans un /24)`;
+}
+calcCIDR();
+
+// ===== QUIZ =====
+const quizDB = [
+  // RESEAU
+  {cat:'Réseau',q:'Quelle couche du modèle OSI utilise les adresses MAC ?',opts:['Couche 3 — Réseau','Couche 2 — Liaison de données','Couche 1 — Physique','Couche 4 — Transport'],ans:1,expl:'La couche 2 (Liaison) utilise les adresses MAC pour identifier les équipements sur le réseau local. Le switch L2 travaille à cette couche.'},
+  {cat:'Réseau',q:'Que teste la commande ping 127.0.0.1 ?',opts:['La connectivité vers la passerelle','Le câble réseau physique','La pile TCP/IP locale de la machine','La résolution DNS'],ans:2,expl:'127.0.0.1 est l\'adresse de loopback. Elle teste uniquement que la pile TCP/IP est correctement installée sur la machine locale. Elle ne teste PAS le réseau physique.'},
+  {cat:'Réseau',q:'Quelle adresse est une adresse IP PUBLIQUE ?',opts:['10.15.2.1','172.20.3.4','192.168.100.50','172.32.1.1'],ans:3,expl:'172.32.x.x est publique ! La plage privée B va de 172.16.0.0 à 172.31.255.255 seulement. 172.32.x.x est en dehors de cette plage, donc publique.'},
+  {cat:'Réseau',q:'Sur quel port fonctionne SSH ?',opts:['21','23','22','3389'],ans:2,expl:'SSH (Secure Shell) utilise le port TCP 22. Telnet (non sécurisé) utilise le port 23. RDP utilise 3389. FTP utilise 20/21.'},
+  {cat:'Réseau',q:'Quel protocole résout les adresses IP en adresses MAC ?',opts:['DNS','DHCP','ARP','ICMP'],ans:2,expl:'ARP (Address Resolution Protocol) résout les adresses IP en adresses MAC sur le réseau local. Il fonctionne uniquement en local (broadcast limité au LAN).'},
+  {cat:'Réseau',q:'Quels 2 messages DHCP le client diffuse-t-il en broadcast ?',opts:['DHCPOFFER et DHCPACK','DHCPDISCOVER et DHCPREQUEST','DHCPDISCOVER et DHCPOFFER','DHCPREQUEST et DHCPACK'],ans:1,expl:'Le client diffuse DHCPDISCOVER (il cherche un serveur) et DHCPREQUEST (il accepte l\'offre). DHCPOFFER et DHCPACK sont envoyés par le SERVEUR.'},
+  // CIDR
+  {cat:'CIDR/VLSM',q:'Combien d\'hôtes utilisables dans un réseau /26 ?',opts:['30','62','64','126'],ans:1,expl:'/26 → 6 bits hôtes → 2^6 − 2 = 64 − 2 = 62 hôtes utilisables. Le block size est 256−192 = 64.'},
+  {cat:'CIDR/VLSM',q:'Quel est le masque en notation décimale pour /27 ?',opts:['255.255.255.192','255.255.255.224','255.255.255.240','255.255.255.248'],ans:1,expl:'/27 = 27 bits à 1 → 11111111.11111111.11111111.11100000 → 255.255.255.224. Block size = 256−224 = 32. Hôtes = 30.'},
+  {cat:'CIDR/VLSM',q:'Quelle est la notation CIDR pour le masque 255.255.255.248 ?',opts:['/27','/28','/29','/30'],ans:2,expl:'255.255.255.248 = 11111111.11111111.11111111.11111000 → 29 bits à 1 → /29. Block size = 8, hôtes = 6.'},
+  {cat:'CIDR/VLSM',q:'Un réseau 192.168.1.128/26 — quelle est son adresse de broadcast ?',opts:['192.168.1.191','192.168.1.192','192.168.1.255','192.168.1.190'],ans:0,expl:'Block size /26 = 64. Réseau: 128. Broadcast = 128 + 64 − 1 = 191. Hôtes: .129 à .190.'},
+  // CISCO
+  {cat:'Cisco IOS',q:'Quelle commande permet de sauvegarder la config active vers la NVRAM ?',opts:['copy startup-config running-config','write memory','copy running-config startup-config','save config'],ans:2,expl:'"copy running-config startup-config" copie la config active (RAM) vers la NVRAM (startup-config). Sans ça, la config est perdue au reboot.'},
+  {cat:'Cisco IOS',q:'Que signifie "administratively down" sur une interface Cisco ?',opts:['Câble déconnecté','Interface désactivée par shutdown','Problème de duplex','VLAN non configuré'],ans:1,expl:'"administratively down" signifie que l\'interface a été désactivée manuellement avec la commande "shutdown". La correction est "no shutdown".'},
+  {cat:'Cisco IOS',q:'Quelle commande permet d\'éviter les erreurs de traduction DNS lors d\'une faute de frappe en CLI ?',opts:['no cdp run','no ip http server','no ip domain-lookup','service password-encryption'],ans:2,expl:'"no ip domain-lookup" empêche le routeur d\'essayer de résoudre une commande mal tapée en nom DNS, ce qui bloque le CLI pendant plusieurs secondes.'},
+  {cat:'Cisco IOS',q:'Sur quelle sous-interface configure-t-on le VLAN 10 en Router-on-a-Stick ?',opts:['interface Gi0/0','interface Gi0/0.1','interface Gi0/0.10','interface vlan 10'],ans:2,expl:'On crée une sous-interface Gi0/0.10 avec "encapsulation dot1Q 10" pour traiter les trames taguées VLAN 10.'},
+  {cat:'Cisco IOS',q:'Quelle commande affiche l\'état de toutes les interfaces (UP/DOWN) ?',opts:['show interfaces','show ip route','show ip interface brief','show version'],ans:2,expl:'"show ip interface brief" donne un résumé rapide : interface, IP, état (up/down), protocole. C\'est la commande de diagnostic la plus utilisée.'},
+  // AD / GPO
+  {cat:'Active Directory',q:'Quel est l\'ordre d\'application des GPO (de la plus faible à la plus forte) ?',opts:['DOLS','LSDOU','OSLDU','SUDLO'],ans:1,expl:'LSDOU : Local → Site → Domaine → OU. La dernière GPO appliquée (OU la plus proche) l\'emporte. Sauf si une GPO parente est marquée "Enforced".'},
+  {cat:'Active Directory',q:'Dans le modèle AGDLP, que signifie DL ?',opts:['Distribution List','Domain Local Group','Domain Link','Delegated Local'],ans:1,expl:'DL = Domain Local Group. Il contient les Global Groups et définit l\'accès à une ressource spécifique. Les permissions NTFS sont appliquées sur ce groupe.'},
+  {cat:'Active Directory',q:'Quelle commande PowerShell crée un utilisateur AD ?',opts:['Add-ADUser','New-ADUser','Create-ADUser','Set-ADUser'],ans:1,expl:'"New-ADUser" crée un nouvel utilisateur AD. "Set-ADUser" modifie un existant. "Add-ADGroupMember" ajoute un user à un groupe.'},
+  {cat:'Active Directory',q:'Quelle commande affiche les GPO appliquées à un utilisateur ?',opts:['gpupdate /force','gpedit.msc','gpresult /R','rsop.exe'],ans:2,expl:'"gpresult /R" affiche les GPO appliquées à l\'utilisateur et à l\'ordinateur en mode console. "/H rapport.html" génère un rapport HTML plus détaillé.'},
+  // LINUX
+  {cat:'Linux',q:'Quelle commande affiche les ports en écoute sous Linux (moderne) ?',opts:['netstat -tulnp','ss -tuln','lsof -i','ifconfig'],ans:1,expl:'"ss -tuln" est la commande moderne (remplace netstat). t=TCP, u=UDP, l=listening, n=numérique. "ss -tulnp" ajoute le nom du processus.'},
+  {cat:'Linux',q:'Que fait chmod 755 sur un dossier ?',opts:['rw-rw-rw-','rwxr-xr-x','rwx------','r--r--r--'],ans:1,expl:'755 : 7=rwx (proprio), 5=r-x (groupe), 5=r-x (autres). Le propriétaire peut tout faire. Le groupe et les autres peuvent lire et exécuter.'},
+  {cat:'Linux',q:'Quel bit spécial fait qu\'un fichier créé dans un dossier hérite du groupe de ce dossier ?',opts:['Sticky Bit','SUID','SGID','Execute Bit'],ans:2,expl:'SGID (Set Group ID) sur un dossier : tout fichier créé dedans hérite du groupe du dossier, pas du groupe primaire du créateur. Très utile pour les partages de fichiers.'},
+  {cat:'Linux',q:'Quelle commande permet de rendre un service automatiquement démarré au boot ?',opts:['systemctl start nginx','systemctl enable nginx','service nginx autostart','systemctl boot nginx'],ans:1,expl:'"systemctl enable nginx" crée le lien symbolique pour le démarrage automatique. "start" démarre immédiatement mais pas au boot. "enable --now" fait les deux.'},
+];
+
+let quizQ=[], quizIdx=0, quizScore=0, quizAnswered=false;
+
+function startQuiz() {
+  quizQ = [...quizDB].sort(() => Math.random()-0.5).slice(0,10);
+  quizIdx = 0; quizScore = 0; quizAnswered = false;
+  document.getElementById('quiz-overlay').classList.add('open');
+  renderQuiz();
+}
+function renderQuiz() {
+  if (quizIdx >= quizQ.length) { renderScore(); return; }
+  const q = quizQ[quizIdx];
+  const pct = Math.round((quizIdx/quizQ.length)*100);
+  document.getElementById('quiz-inner').innerHTML = `
+    <div class="quiz-progress">Question ${quizIdx+1} / ${quizQ.length} — Score : ${quizScore}</div>
+    <div class="quiz-progress-bar"><div class="quiz-progress-fill" style="width:${pct}%"></div></div>
+    <div class="quiz-cat">${q.cat}</div>
+    <div class="quiz-q">${q.q}</div>
+    <div class="quiz-opts">
+      ${q.opts.map((o,i)=>`<button class="quiz-opt" onclick="answerQuiz(${i})">${String.fromCharCode(65+i)}. ${o}</button>`).join('')}
+    </div>
+    <div class="quiz-expl" id="quiz-expl">💡 ${q.expl}</div>
+    <div class="quiz-actions">
+      <button class="btn" onclick="closeQuiz()">✕ Fermer</button>
+      <button class="btn btn-primary" id="quiz-next" onclick="nextQuiz()" style="display:none">Suivant →</button>
+    </div>`;
+}
+function answerQuiz(idx) {
+  if (quizAnswered) return;
+  quizAnswered = true;
+  const q = quizQ[quizIdx];
+  const opts = document.querySelectorAll('.quiz-opt');
+  opts.forEach((o,i) => {
+    o.disabled = true;
+    if (i === q.ans) o.classList.add('correct');
+    else if (i === idx && i !== q.ans) o.classList.add('wrong');
+  });
+  if (idx === q.ans) quizScore++;
+  document.getElementById('quiz-expl').classList.add('show');
+  document.getElementById('quiz-next').style.display = 'inline-block';
+}
+function nextQuiz() {
+  quizIdx++; quizAnswered = false; renderQuiz();
+}
+function renderScore() {
+  const pct = Math.round((quizScore/quizQ.length)*100);
+  const color = pct>=80?'var(--green)':pct>=60?'var(--orange)':'var(--red)';
+  const msg = pct>=80?'Excellent ! 🎉':pct>=60?'Bien — continue à réviser 💪':'Il faut retravailler ça 📖';
+  document.getElementById('quiz-inner').innerHTML = `
+    <div class="quiz-score-final">
+      <div style="font-size:14px;color:var(--text2);margin-bottom:8px;">Résultat final</div>
+      <div class="quiz-score-num" style="color:${color}">${quizScore}/${quizQ.length}</div>
+      <div style="font-size:24px;margin:8px 0;">${pct}%</div>
+      <div style="font-size:15px;color:var(--text2);margin-bottom:24px;">${msg}</div>
+      <div style="display:flex;gap:10px;justify-content:center;">
+        <button class="btn btn-primary" onclick="startQuiz()">🔄 Recommencer</button>
+        <button class="btn" onclick="closeQuiz()">✕ Fermer</button>
+      </div>
+    </div>`;
+}
+function closeQuiz() {
+  document.getElementById('quiz-overlay').classList.remove('open');
+}
+document.getElementById('quiz-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('quiz-overlay')) closeQuiz();
+});
+
+// ===== PWA: SERVICE WORKER + INSTALL =====
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  document.getElementById('install-btn').style.display = 'inline-block';
+});
+function installApp() {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  deferredInstallPrompt.userChoice.then(() => {
+    deferredInstallPrompt = null;
+    document.getElementById('install-btn').style.display = 'none';
+  });
+}
+window.addEventListener('appinstalled', () => {
+  document.getElementById('install-btn').style.display = 'none';
+});
+
+// ===== INIT =====
+refreshNotesPage();
+</script>
+</body>
+</html>

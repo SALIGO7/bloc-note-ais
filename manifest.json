@@ -1,0 +1,14 @@
+{
+  "name": "Bloc-note AIS — Révision",
+  "short_name": "Bloc-note AIS",
+  "description": "Bloc-note de révision AIS/TIP : réseau, CIDR, Cisco, AD/DNS/DHCP, Linux, GPO, diagnostics, quiz.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0d1117",
+  "theme_color": "#e94560",
+  "lang": "fr",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
